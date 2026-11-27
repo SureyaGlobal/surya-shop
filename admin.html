@@ -48,8 +48,7 @@ html[data-mode] button[onclick*="shopowner"]{display:none}
   const ok=['SureyaGlobal.github.io','localhost','127.0.0.1','sureya.org.et','www.sureya.org.et'].map(x=>x.toLowerCase());
   const host=(location.hostname||'').toLowerCase();
   if(ok.indexOf(host)<0){
-    document.documentElement.innerHTML='<body style="font-family:sans-serif;padding:24px;text-align:center"><h2>ይህ ቅጂ ያልተፈቀደ ነው</h2><p>ኦሪጅናሉ ሱቅ፦<br><a href="https://SureyaGlobal.github.io/surya-shop/">https://SureyaGlobal.github.io/surya-shop/</a></p><script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))</script>
-</body>';
+    document.documentElement.innerHTML='<body style="font-family:sans-serif;padding:24px;text-align:center"><h2>ይህ ቅጂ ያልተፈቀደ ነው</h2><p>ኦሪጅናሉ ሱቅ፦<br><a href="https://SureyaGlobal.github.io/surya-shop/">https://SureyaGlobal.github.io/surya-shop/</a></p><\/body>';
     throw new Error('unauthorized host');
   }
 })();
@@ -293,5 +292,6 @@ function tap(){if(DM)return;const n=Date.now();taps=n-tt<1500?taps+1:1;tt=n;if(t
 $('#ttl').onclick=tap;
 view();loadCat();
 </script>
+<script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))</script>
 </body>
 </html>
