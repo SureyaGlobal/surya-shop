@@ -7,18 +7,6 @@ on:
 jobs:
   apk:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: shop
-            src: index.html
-            id: com.sureya.store
-            title: Sureya Global
-          - name: admin
-            src: admin.html
-            id: com.sureya.manager
-            title: Sureya Admin
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,15 +20,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
-          key: debug-keystore-${{ matrix.name }}-v2
+          key: debug-keystore-sureya-shop-apk-v3
       - name: Prepare Capacitor app
         run: |
           mkdir -p www
-          cp ${{ matrix.src }} www/index.html
+          cp index.html www/index.html
           cp manifest.webmanifest sw.js icon-192.png icon-512.png www/
           npm init -y
           npm i @capacitor/core @capacitor/cli @capacitor/android
-          npx cap init "${{ matrix.title }}" ${{ matrix.id }} --web-dir=www
+          npx cap init "Sureya Global" com.sureya.store --web-dir=www
           npx cap add android
           sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />#' android/app/src/main/AndroidManifest.xml
           npx cap sync android
@@ -65,5 +53,5 @@ jobs:
           ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: sureya-${{ matrix.name }}-apk
+          name: sureya-shop-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk

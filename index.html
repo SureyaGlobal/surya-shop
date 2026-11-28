@@ -45,7 +45,7 @@ html[data-mode] button[onclick*="shopowner"]{display:none}
 (function(){
   try{if(window.top!==window.self){window.top.location=window.self.location}}catch(e){document.documentElement.innerHTML='';throw e}
   const m=document.documentElement.dataset.mode;if(!m)return;
-  const ok=['SureyaGlobal.github.io','localhost','127.0.0.1','sureya.org.et','www.sureya.org.et'].map(x=>x.toLowerCase());
+  const ok=['SureyaGlobal.github.io','localhost','127.0.0.1'].map(x=>x.toLowerCase());
   const host=(location.hostname||'').toLowerCase();
   if(ok.indexOf(host)<0){
     document.documentElement.innerHTML='<body style="font-family:sans-serif;padding:24px;text-align:center"><h2>ይህ ቅጂ ያልተፈቀደ ነው</h2><p>ኦሪጅናሉ ሱቅ፦<br><a href="https://SureyaGlobal.github.io/surya-shop/">https://SureyaGlobal.github.io/surya-shop/</a></p><\/body>';
@@ -78,15 +78,15 @@ async function loadCat(){
       const r=await fetch(x+'?t='+Date.now(),{cache:'no-store'});
       if(!r.ok){CATERR=r.status+' '+x;continue}
       const d=await r.json();
-      if(Array.isArray(d.products)){CAT=d;CATERR='';try{localStorage.setItem(KC,JSON.stringify(d))}catch(e){}view();return}
+      if(Array.isArray(d.products)){d.products=d.products.slice(0,500).map(p=>({id:+p.id||0,n:String((p&&p.n)||'').slice(0,120),p:+(p&&p.p)||0,q:+(p&&p.q)||0,e:String((p&&p.e)||'📦').slice(0,8),img:(p&&typeof p.img==='string'&&/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(p.img))?p.img:''}));if(d.cfg&&typeof d.cfg==='object'){d.cfg={name:String(d.cfg.name||'').slice(0,80),email:String(d.cfg.email||'').slice(0,100),pay:String(d.cfg.pay||'').slice(0,300),cur:String(d.cfg.cur||'').slice(0,10),fee:+d.cfg.fee||0,cnote:String(d.cfg.cnote||'').slice(0,300)}}else d.cfg={};CAT=d;CATERR='';try{localStorage.setItem(KC,JSON.stringify(d))}catch(e){}view();return}
       CATERR='ፋይሉ ልክ አይደለም '+x;
     }catch(e){CATERR=((e&&e.message)||e)+' '+x}
   }
   view();
 }
-const save=()=>{if(!SHOP)schedPub();try{localStorage.setItem(K,JSON.stringify(S))}catch(e){toast('ማከማቻ ሞልቷል፤ ፎቶዎችን ይቀንሱ')}};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){toast('ማከማቻ ሞልቷል፤ ፎቶዎችን ይቀንሱ')}};
 let page='store',auth=false,tries=0,lock=0,cart={};
-const PAGES=SHOP?[['store','🛍️ ሱቅ'],['dlv','🚚 ዴሊቨሪ'],['ord','🧾 ትዕዛዞቼ'],['prof','👤 ፕሮፋይል']]:[['store','🛍️ ሱቅ'],['dash','📊 ዳሽቦርድ'],['prod','📦 ምርቶች'],['ord','🧾 ትዕዛዞች'],['set','⚙️ ቅንብር'],['ai','✨ Gemini']];
+const PAGES=[['store','🛍️ ሱቅ'],['dlv','🚚 ዴሊቨሪ'],['ord','🧾 ትዕዛዞቼ'],['prof','👤 ፕሮፋይል']];
 const sha=async s=>{try{return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('hs:'+s)))].map(b=>b.toString(16).padStart(2,'0')).join('')}catch(e){let h=5381;for(const c of 'hs:'+s)h=((h<<5)+h+c.charCodeAt(0))|0;return 'f'+h}};
 const money=n=>Number(n).toLocaleString('en-US')+' '+esc(cfgv('cur')||'ብር');
 function toast(x){const t=$('#t');t.textContent=x;t.style.display='block';setTimeout(()=>t.style.display='none',2500)}
@@ -97,8 +97,6 @@ function view(){
   const m=$('#m');
   if(page==='store')m.innerHTML=storeH();
   else if(SHOP)m.innerHTML=(({prof:profH,dlv:dlvH})[page]||myOrdH)();
-  else if(!auth)m.innerHTML=loginH();
-  else m.innerHTML=({dash:dashH,prod:prodH,ord:ordH,set:setH,ai:aiH})[page]();
 }
 /* ---------- ሱቅ ---------- */
 function storeH(){
@@ -167,129 +165,42 @@ function clrP(){PR={};try{localStorage.removeItem(KP)}catch(e){}view()}
 function srch(v){v=v.toLowerCase();document.querySelectorAll('[data-n]').forEach(c=>c.style.display=c.dataset.n.includes(v)?'':'none')}
 function trk(){const id=$('#tc').value.trim().toUpperCase(),e=$('#te').value.trim().toLowerCase();const o=S.orders.find(x=>x.id===id&&x.e.toLowerCase()===e);toast(o?'ሁኔታ: '+o.s:'ትዕዛዝ አልተገኘም')}
 /* ---------- መግቢያ ---------- */
-function loginH(){
-  const first=!S.cfg.pin;
-  return `<div class="card"><h3>${first?'🔐 የአስተዳዳሪ ፒን ይፍጠሩ (ቢያንስ 6 ቁጥር)':'🔐 የአስተዳዳሪ መግቢያ'}</h3><input id="pin" type="password" inputmode="numeric" placeholder="ፒን" autocomplete="off"><button class="b" onclick="login()">${first?'ፍጠር':'ግባ'}</button></div>`;
-}
-async function login(){
-  const v=$('#pin').value;
-  if(Date.now()<lock){toast('ለጊዜው ተቆልፏል፣ ቆይተው ይሞክሩ');return}
-  if(!S.cfg.pin){if(v.length<6){toast('ፒን ቢያንስ 6 ቁምፊ');return}S.cfg.pin=await sha(v);save();auth=true;return view()}
-  if(await sha(v)===S.cfg.pin){auth=true;tries=0;view()}
-  else{tries++;if(tries>=5){lock=Date.now()+60000;tries=0}toast('ፒን ትክክል አይደለም')}
-}
+
+
 /* ---------- ዳሽቦርድ ---------- */
-function dashH(){
-  const rev=S.orders.reduce((a,o)=>a+o.tot,0),low=S.products.filter(p=>p.q<=5).length;
-  const days=[...Array(7)].map((_,i)=>{const d=new Date(Date.now()-(6-i)*864e5).toDateString();return S.orders.filter(o=>new Date(o.d).toDateString()===d).reduce((a,o)=>a+o.tot,0)});
-  const mx=Math.max(...days,1);
-  const bars=days.map((v,i)=>{const h=v/mx*100;return `<rect x="${i*40+8}" y="${110-h}" width="26" height="${h}" rx="5" fill="var(--pr2)"/><text x="${i*40+21}" y="124" font-size="10" text-anchor="middle" fill="var(--mu)">${i+1}</text>`}).join('');
-  return `<div class="st"><div class="card"><span class="mu">ጠቅላላ ገቢ</span><br><b>${money(rev)}</b></div><div class="card"><span class="mu">ትዕዛዞች</span><br><b>${S.orders.length}</b></div><div class="card"><span class="mu">ምርቶች</span><br><b>${S.products.length}</b></div><div class="card"><span class="mu">ሊያልቁ የተቃረቡ</span><br><b>${low}</b></div></div>
-  ${low?'<div class="card"><h3>⚠️ ሊያልቁ የተቃረቡ</h3>'+S.products.filter(p=>p.q<=5).map(p=>esc(p.n)+' ('+p.q+')').join('፣ ')+'</div>':''}<div class="card sc"><h3>የ7 ቀን ሽያጭ</h3><svg viewBox="0 0 290 130" width="100%" height="150">${bars}</svg></div>`;
-}
+
 /* ---------- ምርቶች ---------- */
-async function testGit(){
-  if(window.LOCAL_KEY)return pubLocal(false);
-  let tk='';try{tk=($('#gt')&&$('#gt').value.trim())||localStorage.getItem('shoptk')||''}catch(e){}
-  const gr=$('#gr');let sr='';try{sr=localStorage.getItem('shoprepo')||''}catch(e){}
-  const repo=(gr&&gr.value.trim())||sr||'SureyaGlobal/surya-shop';
-  if(!tk){setStat('❌ token የለም። ከላይ ባለው ሳጥን ይለጥፉት');toast('token ያስገቡ');return}
-  const H={Authorization:'Bearer '+tk,Accept:'application/vnd.github+json'};
-  try{
-    let r=await fetch('https://api.github.com/user',{headers:H});
-    if(!r.ok){setStat('❌ token አይሰራም ('+r.status+')። አዲስ token ይውሰዱ');toast('token አይሰራም');return}
-    const u=(await r.json()).login;
-    r=await fetch('https://api.github.com/repos/'+repo,{headers:H});
-    if(!r.ok){setStat('❌ repo "'+repo+'" አልተገኘም ('+r.status+')። ስሙን ወይም የ token ፈቃዱን ያረጋግጡ');toast('repo አልተገኘም');return}
-    setStat('⏳ ተገናኝቷል ('+u+' → '+repo+')። በመሞከር ላይ...');
-    try{localStorage.setItem('shoptk',tk);localStorage.setItem('shoprepo',repo)}catch(e){}
-    await pubCat(true);
-  }catch(e){setStat('❌ ግንኙነት አልተሳካም: '+((e&&e.message)||e))}
-}
-function tokBanner(){
-  let t='';try{t=localStorage.getItem('shoptk')||''}catch(e){}
-  const st='<div id="pst" class="mu" style="margin:0 0 8px;word-break:break-word">'+esc(pubStat())+'</div>';
-  return (t||window.LOCAL_KEY)?st:'<div class="card" style="border-color:var(--dg)"><b>⚠️ ከሱቁ ጋር አልተገናኘም</b><div class="mu">ምርቶችዎ ለደንበኞች እንዲታዩ GitHub አንድ ጊዜ ያገናኙ፦ ⚙️ ቅንብር → "ለደንበኞች አትም" ውስጥ token ይለጥፉና 🔍 ፈትሽ ይጫኑ።</div></div>'+st}
-function prodH(){return tokBanner()+prodH0()}
-function prodH0(){
-  return `<div class="card"><h3>➕ አዲስ ምርት</h3><input id="pe" placeholder="አዶ (ለምሳሌ 📱)" maxlength="4"><input id="pn" placeholder="የምርት ስም" maxlength="60"><input id="pp" type="number" min="0" placeholder="ዋጋ"><input id="pq" type="number" min="0" placeholder="ብዛት"><label class="mu">📷 የምርት ፎቶ (አማራጭ)</label><input id="pf" type="file" accept="image/*"><button class="b" onclick="addP()">ጨምር</button></div>
-  ${S.products.map(p=>`<div class="card row"><span>${p.img&&/^data:image\//.test(p.img)?'<img src="'+esc(p.img)+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;vertical-align:middle">':esc(p.e)} <b>${esc(p.n)}</b><br><span class="mu">${money(p.p)} · ቀሪ ${p.q}</span></span><span><button class="b" onclick="editP(${p.id})">ዋጋ</button> <button class="b" onclick="chgImg(${p.id})">📷</button> <button class="b" onclick="editQ(${p.id})">ብዛት</button> <button class="b g" onclick="delP(${p.id})">ሰርዝ</button></span></div>`).join('')}`;
-}
-function addP(){const n=$('#pn').value.trim(),p=+$('#pp').value,q=+$('#pq').value;if(!n||!(p>=0)||!(q>=0)){toast('መረጃውን ያሟሉ');return}
-  const f=$('#pf').files[0],mk=img=>{S.products.push({id:Date.now(),n,p,q,e:$('#pe').value.trim()||'📦',img});save();view()};f?pic(f,480,mk):mk('')}
-function delP(id){if(confirm('ይሰረዝ?')){S.products=S.products.filter(p=>p.id!=id);save();view()}}
-function pic(file,max,cb){if(!file||!/^image\//.test(file.type)||file.size>15e6){toast('ልክ ያልሆነ ፎቶ');return cb('')}const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.72))};i.onerror=()=>{toast('ፎቶ አልተነበበም');cb('')};i.src=r.result};r.onerror=()=>cb('');r.readAsDataURL(file)}
-function editP(id){const p=S.products.find(x=>x.id==id),v=prompt('አዲስ ዋጋ',p.p);if(v!==null&&v!==''&&+v>=0){p.p=+v;save();view()}}
-function chgImg(id){const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>pic(i.files[0],480,img=>{if(!img)return;S.products.find(x=>x.id==id).img=img;save();view();toast('ፎቶ ተቀይሯል ✅')});i.click()}
-function editQ(id){const p=S.products.find(x=>x.id==id),v=prompt('አዲስ ብዛት',p.q);if(v!==null&&+v>=0){p.q=+v;save();view()}}
+
+
+
+
+
+
+
+
+
+
 /* ---------- ትዕዛዞች ---------- */
-function ordH(){
-  if(!S.orders.length)return '<div class="card mu">እስካሁን ትዕዛዝ የለም</div>';
-  return S.orders.map(o=>`<div class="card"><div class="row"><b>#${esc(o.id)}</b><span class="mu">${new Date(o.d).toLocaleString('en-GB')}</span></div>
-  <div>${o.its.map(i=>esc(i.n)+' × '+i.c).join('، ')}</div><div><b>${money(o.tot)}</b> · ${esc(o.n)} · ${esc(o.ph)}</div><div class="mu">💳 ${esc(o.m||'')} ${esc(o.r||'')}</div>${o.dl?'<div>🚚 '+esc(o.dl.a||'')+(o.dl.g?' <a href="https://maps.google.com/?q='+(+o.dl.g.la)+','+(+o.dl.g.lo)+'" target="_blank" rel="noopener">📍 ካርታ</a>':'')+'</div>':''}
-  <div class="row"><select onchange="setS('${esc(o.id)}',this.value)">${['አዲስ','በሂደት','ተልኳል','ተጠናቋል','ተሰርዟል'].map(s=>`<option ${s===o.s?'selected':''}>${s}</option>`).join('')}</select>
-  <a href="mailto:${encodeURIComponent(o.e)}?subject=${encodeURIComponent('ስለ ትዕዛዝዎ #'+o.id)}"><button class="b">✉️ ኢሜል</button></a></div></div>`).join('');
-}
-function setS(id,s){const o=S.orders.find(x=>x.id===id);if(o){o.s=s;save();toast('ተቀይሯል')}}
+
+
 /* ---------- ቅንብር ---------- */
-function setH(){
-  return `<div class="card"><h3>የሱቅ ቅንብር</h3><input id="sn" value="${esc(S.cfg.name)}" maxlength="50"><input id="se" type="email" value="${esc(S.cfg.email)}" placeholder="የባለቤት ኢሜል (ትዕዛዝ የሚደርስበት)"><input id="sc" value="${esc(S.cfg.cur)}" maxlength="8"><input id="spi" value="${esc(S.cfg.pay||'')}" placeholder="የክፍያ መመሪያ (ለምሳሌ ቴሌብር 09...)" maxlength="120"><input id="sfee" type="number" min="0" value="${esc(S.cfg.fee||'')}" placeholder="የዴሊቨሪ ክፍያ (ብር)"><input id="scn" value="${esc(S.cfg.cnote||'')}" placeholder="የዴሊቨሪ አገልግሎት ማስታወሻ (ዋጋ፣ ሰዓት)" maxlength="120"><label class="mu">🖼️ አርማ (ሎጎ)</label><input id="sl" type="file" accept="image/*"><input id="sp" type="password" placeholder="አዲስ ፒን (አማራጭ)"><button class="b" onclick="saveC()">አስቀምጥ</button></div>
-  <div class="card"><h3>🌐 ለደንበኞች አትም</h3><p class="mu">አንድ ጊዜ ብቻ: 1) 🔑 ይጫኑ → GitHub ይከፈታል፣ ወደ ታች ሂደው <b>Generate token</b> ይጫኑ → token ን ይቅዱ። 2) ከታች ይለጥፉና 🚀 አትም ይጫኑ። ከዚያ በኋላ ምርት ሲጨምሩ ራሱ ይታተማል።</p><input id="gr" value="SureyaGlobal/surya-shop"><input id="gt" type="password" placeholder="GitHub token (አንድ ጊዜ)" autocomplete="off"><button class="b g" onclick="window.open('https://github.com/settings/tokens/new?scopes=repo&amp;description=shop-publish','_blank')">🔑 token ፍጠር</button> <button class="b" onclick="pubCat()">🚀 አትም</button> <button class="b" onclick="testGit()">🔍 ፈትሽ</button><div id="pst" class="mu" style="margin-top:8px;word-break:break-word">${esc(pubStat())}</div></div>
-  <div class="card"><h3>ምትኬ</h3><button class="b" onclick="exp()">ምትኬ አውርድ</button> <button class="b" onclick="csv()">CSV</button> <button class="b" onclick="imp()">መልስ</button> <button class="b g" onclick="auth=false;go('store')">ውጣ</button> <button class="b g" onclick="try{localStorage.setItem('shopowner','0')}catch(e){};location.reload()">ደንበኛ እይታ</button></div>`;
-}
-async function saveC(){const lf=$('#sl').files[0];if(lf)await new Promise(r=>pic(lf,128,img=>{if(img)S.cfg.logo=img;r()}));S.cfg.name=$('#sn').value.trim()||S.cfg.name;S.cfg.email=$('#se').value.trim();S.cfg.cur=$('#sc').value.trim()||'ብር';S.cfg.pay=$('#spi').value.trim();S.cfg.fee=+$('#sfee').value||0;S.cfg.cnote=$('#scn').value.trim();
-  const p=$('#sp').value;if(p){if(p.length<6){toast('ፒን ቢያንስ 6');return}S.cfg.pin=await sha(p)}save();toast('ተቀምጧል ✅');view()}
+
+
 let pubT=0,lastH='';try{lastH=localStorage.getItem('pubh')||''}catch(e){}
 const catHash=()=>JSON.stringify([S.cfg.name,S.cfg.email,S.cfg.pay,S.cfg.cur,S.cfg.fee,S.cfg.cnote,S.products]);
-function setStat(s){const v=new Date().toLocaleString('en-GB')+' → '+s;try{localStorage.setItem('publast',v)}catch(e){}const e=$('#pst');if(e)e.textContent=v}
-function pubStat(){try{return localStorage.getItem('publast')||'ገና አልታተመም'}catch(e){return ''}}
-function schedPub(){clearTimeout(pubT);pubT=setTimeout(()=>{let tk='';try{tk=localStorage.getItem('shoptk')||''}catch(e){}if((!tk&&!window.LOCAL_KEY)||catHash()===lastH)return;pubCat(true)},4000)}
-async function pubLocal(silent){
-  const data={v:1,t:new Date().toISOString(),cfg:{name:S.cfg.name,email:S.cfg.email,pay:S.cfg.pay||'',cur:S.cfg.cur,fee:+S.cfg.fee||0,cnote:S.cfg.cnote||''},products:S.products};
-  setStat('⏳ በመላክ ላይ...');
-  try{
-    const r=await fetch('/publish',{method:'POST',headers:{'content-type':'application/json','x-key':window.LOCAL_KEY},body:JSON.stringify(data)});
-    const d=await r.json().catch(()=>({}));
-    if(r.ok&&d.ok){lastH=catHash();try{localStorage.setItem('pubh',lastH)}catch(e){}setStat('✅ ታትሟል (GitHub ላይ ደርሷል፤ ሱቁ ላይ በ1-2 ደቂቃ ይታያል)');toast('ታትሟል ✅')}
-    else{setStat('❌ '+(d.error||r.status)+(d.out?' | '+String(d.out).slice(-200):''));toast('ማተም አልተሳካም')}
-  }catch(e){setStat('❌ አገልጋይ አልተገኘም። በ Termux "shop-admin" መሮጡን ያረጋግጡ')}
-}
-async function pubCat(silent){
-  if(window.LOCAL_KEY)return pubLocal(silent);
-  const gr=$('#gr'),gt=$('#gt');let sr='';try{sr=localStorage.getItem('shoprepo')||''}catch(e){}const repo=(gr&&gr.value.trim())||sr||'SureyaGlobal/surya-shop';let tk=(gt&&gt.value.trim())||'';
-  try{if(tk)localStorage.setItem('shoptk',tk);else tk=localStorage.getItem('shoptk')||''}catch(e){}
-  if(!tk){setStat('token የለም');if(!silent)toast('GitHub token ያስገቡ');return}
-  const data={v:1,t:new Date().toISOString(),cfg:{name:S.cfg.name,email:S.cfg.email,pay:S.cfg.pay||'',cur:S.cfg.cur,fee:+S.cfg.fee||0,cnote:S.cfg.cnote||''},products:S.products};
-  const u='https://api.github.com/repos/'+repo+'/contents/products.json',H={Authorization:'Bearer '+tk,Accept:'application/vnd.github+json'};
-  try{let sha;const g=await fetch(u,{headers:H});if(g.ok)sha=(await g.json()).sha;
-    const body={message:'Update catalog',content:btoa(unescape(encodeURIComponent(JSON.stringify(data))))};if(sha)body.sha=sha;
-    const r=await fetch(u,{method:'PUT',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    let msg='';if(!r.ok){try{msg=(await r.clone().json()).message||''}catch(e){}}setStat(r.status+(r.ok?' ታትሟል':' ስህተት: '+msg)+' | '+repo);if(r.ok){lastH=catHash();try{localStorage.setItem('shoprepo',repo);localStorage.setItem('pubh',lastH)}catch(e){}}toast(r.ok?'ታትሟል ✅ (1-2 ደቂቃ ይፈጃል)':'አልተሳካም ('+r.status+')')}catch(e){setStat('ግንኙነት አልተሳካም: '+(e&&e.message||e));toast('ግንኙነት አልተሳካም')}
-}
-function aiH(){
-  let k='';try{k=localStorage.getItem('gemkey')||''}catch(e){}
-  return `<div class="card"><h3>✨ Gemini ረዳት</h3><p class="mu">ለምርት መግለጫ፣ ለማስታወቂያ ወይም ለደንበኛ መልዕክት ይጠቀሙ። ቁልፉ በዚህ ስልክ ላይ ብቻ ይቀመጣል፤ ለደንበኞች አይታይም።</p><input id="gk" type="password" placeholder="${k?'ቁልፍ ተቀምጧል (ለመቀየር አዲስ ያስገቡ)':'Gemini API ቁልፍ'}" autocomplete="off"><textarea id="gq" rows="4" placeholder="ለምሳሌ: ለስማርት ሰዓት አጭር የሽያጭ መግለጫ በአማርኛ ጻፍ"></textarea><button class="b" onclick="gem()">ጠይቅ</button> <button class="b" onclick="copyGo()">ቅዳ</button><div id="go" class="card" style="white-space:pre-wrap;margin-top:10px"></div></div>`;
-}
-async function gem(){
-  let k=$('#gk').value.trim();
-  try{if(k)localStorage.setItem('gemkey',k);else k=localStorage.getItem('gemkey')||''}catch(e){}
-  if(!k){toast('Gemini ቁልፍ ያስገቡ');return}
-  const q=$('#gq').value.trim();if(!q){toast('ጥያቄ ይጻፉ');return}
-  $('#go').textContent='በመጻፍ ላይ...';
-  try{
-    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':k},body:JSON.stringify({contents:[{parts:[{text:q}]}]})});
-    const d=await r.json();
-    const t=d&&d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts&&d.candidates[0].content.parts.map(p=>p.text||'').join('');
-    $('#go').textContent=t||('ስህተት: '+((d&&d.error&&d.error.message)||r.status));
-  }catch(e){$('#go').textContent='ግንኙነት አልተሳካም'}
-}
-function copyGo(){const t=$('#go').textContent;if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast('ተቀድቷል'),()=>toast('መቅዳት አልተቻለም'))}
-function csv(){const r=['id,date,customer,email,phone,total,pay,status',...S.orders.map(o=>[o.id,o.d,o.n,o.e,o.ph,o.tot,o.m||'',o.s].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','))].join('\n');navigator.clipboard&&navigator.clipboard.writeText(r).then(()=>toast('CSV ተቀድቷል'),()=>toast('አልተቻለም'))}
-function imp(){const v=prompt('ምትኬ JSON ለጥፍ');if(!v)return;try{const d=JSON.parse(v);if(!Array.isArray(d.products)||!Array.isArray(d.orders))throw 0;S.products=d.products.map(p=>({...p,id:+p.id||Date.now(),p:+p.p||0,q:+p.q||0}));S.orders=d.orders;S.cfg={...S.cfg,...d.cfg,pin:S.cfg.pin};save();toast('ተመልሷል ✅');view()}catch(e){toast('ልክ ያልሆነ ምትኬ')}}
-function exp(){const d={...S,cfg:{...S.cfg,pin:''}};navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(d)).then(()=>toast('ምትኬ ተቀድቷል'),()=>toast('መቅዳት አልተቻለም'))}
+
+
+
+
+
+
+
+
+
+
+
 let taps=0,tt=0;
-function tap(){if(DM)return;const n=Date.now();taps=n-tt<1500?taps+1:1;tt=n;if(taps>=5){taps=0;try{localStorage.setItem('shopowner',OWN?'0':'1')}catch(e){}location.hash='';location.reload()}}
-$('#ttl').onclick=tap;
+
 view();loadCat();
 </script>
 <script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))</script>
